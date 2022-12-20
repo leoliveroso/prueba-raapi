@@ -3,7 +3,7 @@
 import json
 import os
 
-spark.conf.set("spark.sql.shuffle.partitions",100)
+spark.conf.set("spark.sql.shuffle.partitions",4)
 
 # COMMAND ----------
 
