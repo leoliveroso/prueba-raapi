@@ -1,5 +1,6 @@
 # Databricks notebook source
 # DBTITLE 1,Import libs
+import pyspark.sql.types as sql_types
 import json
 import os
 
@@ -85,19 +86,47 @@ format = 'csv'
 # Use dbutils secrets to get Snowflake credentials.
 user = dbutils.secrets.get("prueba-rappi", "snowflake-user")
 password = dbutils.secrets.get("prueba-rappi", "snowflake-password")
+schema = route_bronze.split("/")[-1]
  
 options = {
   "sfUrl": "mu10071.us-central1.gcp.snowflakecomputing.com",
   "sfUser": user,
   "sfPassword": password,
-  "sfDatabase": "pruebas_loliveros",
-  "sfSchema": "bronze",
+  "sfDatabase": "PRUEBAS_LOLIVEROS",
+  "sfSchema": "PUBLIC",
   "sfWarehouse": "COMPUTE_WH"
 }
 
 # COMMAND ----------
 
+# DBTITLE 1,Create database if not exist
+query_create_db_bronze = """CREATE DATABASE IF NOT EXISTS bronze"""
+libs_query_for_scala([query_create_db_bronze], options)
+
+# COMMAND ----------
+
+# MAGIC %scala
+# MAGIC val res = libs_send_querys(verb=true)
+# MAGIC Seq(res).toDF("value").createOrReplaceTempView("result")
+
+# COMMAND ----------
+
+# DBTITLE 1,Create Schema if not exist
+options["sfDatabase"] = "bronze"
+query_create_schema = f"""CREATE SCHEMA IF NOT EXISTS {schema}"""
+libs_query_for_scala([query_create_schema], options)
+
+# COMMAND ----------
+
+# MAGIC %scala
+# MAGIC val res = libs_send_querys(verb=true)
+# MAGIC Seq(res).toDF("value").createOrReplaceTempView("result")
+
+# COMMAND ----------
+
 # DBTITLE 1,Define Functions
+options["sfSchema"] = schema
+
 def migrate_files_raw2bronze(path_raw = None, path_bronze = None, format = 'csv', config_db = None):
     response = {
         "status": False
