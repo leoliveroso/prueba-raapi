@@ -69,4 +69,89 @@ display(df_members_usuarios_ciudad_aux3.limit(10))
 
 # COMMAND ----------
 
+# DBTITLE 1,Transforms with temp views
+# MAGIC %sql 
+# MAGIC CREATE OR REPLACE TEMPORARY VIEW vm_members_aux1_filtros as 
+# MAGIC SELECT 
+# MAGIC 	city ,
+# MAGIC 	member_id,
+# MAGIC 	min(joined) as joined
+# MAGIC FROM delta.`/mnt/pruebas-loliveros/bronze/megelon_meetup/members`
+# MAGIC group by 1, 2;
+# MAGIC 
+# MAGIC select * from vm_members_aux1_filtros limit 10;
+
+# COMMAND ----------
+
+# MAGIC %sql 
+# MAGIC CREATE OR REPLACE TEMPORARY VIEW vm_members_aux2_filtros as
+# MAGIC select
+# MAGIC 	city,
+# MAGIC 	member_id,
+# MAGIC 	joined,
+# MAGIC 	year(joined) as anio,
+# MAGIC 	month(joined) as mes
+# MAGIC from
+# MAGIC 	vm_members_aux1_filtros;
+# MAGIC     
+# MAGIC select * from vm_members_aux2_filtros limit 15;
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC 
+# MAGIC CREATE OR REPLACE TEMPORARY VIEW vm_members_aux3_filtros as 
+# MAGIC select
+# MAGIC 	city,
+# MAGIC 	anio,
+# MAGIC 	count(member_id)
+# MAGIC from 
+# MAGIC 	vm_members_aux2_filtros
+# MAGIC group by 1, 2;
+# MAGIC 
+# MAGIC select * from vm_members_aux3_filtros limit 15;
+
+# COMMAND ----------
+
+# DBTITLE 1,With Subquery
+# MAGIC %sql
+# MAGIC 
+# MAGIC CREATE OR REPLACE TEMPORARY VIEW vw_usuarios_anuales_por_ciudad as 
+# MAGIC select
+# MAGIC 	country,
+# MAGIC 	state,
+# MAGIC 	city,
+# MAGIC 	anio,
+# MAGIC 	count(member_id)
+# MAGIC from
+# MAGIC 	(
+# MAGIC 	select
+# MAGIC 		country,
+# MAGIC 		state,
+# MAGIC 		city,
+# MAGIC 		member_id,
+# MAGIC 		joined,
+# MAGIC 		year(joined) as anio,
+# MAGIC 		month(joined) as mes
+# MAGIC 	from
+# MAGIC 		(
+# MAGIC 		select
+# MAGIC 			country,
+# MAGIC 			state,
+# MAGIC 			city,
+# MAGIC 			member_id,
+# MAGIC 			min(joined) as joined
+# MAGIC 		from
+# MAGIC 			delta.`/mnt/pruebas-loliveros/bronze/megelon_meetup/members` m
+# MAGIC 		group by
+# MAGIC 			1,2,3,4
+# MAGIC 			) x) y
+# MAGIC where state not in ('ca') and city not in ('Chicago Park')
+# MAGIC group by 1, 2, 3, 4
+# MAGIC order by 1, 2, 3, 4;
+# MAGIC 
+# MAGIC select * from vw_usuarios_anuales_por_ciudad limit 15;
+
+# COMMAND ----------
+
 
