@@ -18,7 +18,19 @@ spark.conf.set("spark.sql.shuffle.partitions",4)
 # COMMAND ----------
 
 # DBTITLE 1,Define Params 
-route_bronze = '/mnt/pruebas-loliveros/bronze/megelon_meetup'
+dbutils.widgets.text("route_bronze", '/mnt/pruebas-loliveros/bronze/megelon_meetup')
+dbutils.widgets.text("route_silver", '/mnt/pruebas-loliveros/silver/megelon_meetup')
+#dbutils.widgets.text("url_origen", "megelon/meetup")
+
+
+route_bronze = dbutils.widgets.get("route_bronze")
+route_silver = dbutils.widgets.get("route_silver")
+path_silver = '/dbfs' + route_silver
+
+#Create folder source if not exist
+if not os.path.exists(path_silver):
+    print(f"no existe la ruta, por ende se crea {path_silver}")
+    os.mkdir(path_silver)
 
 # Use dbutils secrets to get Snowflake credentials.
 user = dbutils.secrets.get("prueba-rappi", "snowflake-user")
@@ -65,7 +77,13 @@ df_members_usuarios_ciudad_aux3 = df_members_usuarios_ciudad_aux2.groupBy(
     "city", "anio").agg(
         sql_func.count('member_id').alias("count_member")
     ).orderBy("city", "anio")
+
+#Write
+path_dest = os.path.join(route_silver, 'members_usuarios_ciudad_aux3')
+df_members_usuarios_ciudad_aux3.write.format('delta').mode('overwrite').save(path_dest)
 display(df_members_usuarios_ciudad_aux3.limit(10))
+
+
 
 # COMMAND ----------
 
@@ -104,12 +122,18 @@ display(df_members_usuarios_ciudad_aux3.limit(10))
 # MAGIC select
 # MAGIC 	city,
 # MAGIC 	anio,
-# MAGIC 	count(member_id)
+# MAGIC 	count(member_id) as cont_members
 # MAGIC from 
 # MAGIC 	vm_members_aux2_filtros
 # MAGIC group by 1, 2;
 # MAGIC 
 # MAGIC select * from vm_members_aux3_filtros limit 15;
+
+# COMMAND ----------
+
+df =  spark.sql('select * from vm_members_aux3_filtros')
+path_dest = os.path.join(route_silver, 'members_aux3_filtros')
+df.write.format('delta').mode('overwrite').save(path_dest)
 
 # COMMAND ----------
 
@@ -122,7 +146,7 @@ display(df_members_usuarios_ciudad_aux3.limit(10))
 # MAGIC 	state,
 # MAGIC 	city,
 # MAGIC 	anio,
-# MAGIC 	count(member_id)
+# MAGIC 	count(member_id) as cont_members
 # MAGIC from
 # MAGIC 	(
 # MAGIC 	select
@@ -154,4 +178,7 @@ display(df_members_usuarios_ciudad_aux3.limit(10))
 
 # COMMAND ----------
 
+df =  spark.sql('select * from vw_usuarios_anuales_por_ciudad')
+path_dest = os.path.join(route_silver, 'vw_usuarios_anuales_por_ciudad')
+df.write.format('delta').mode('overwrite').save(path_dest)
 

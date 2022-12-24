@@ -79,9 +79,19 @@ def libs_query_for_scala(list_querys,json_connect):
 # COMMAND ----------
 
 # DBTITLE 1,Parameters
-route_raw = '/mnt/pruebas-loliveros/raw/kaggle/megelon_meetup'
-route_bronze = '/mnt/pruebas-loliveros/bronze/megelon_meetup'
-format = 'csv'
+dbutils.widgets.text("route_raw", "/mnt/pruebas-loliveros/raw/kaggle/megelon_meetup")
+dbutils.widgets.text("route_bronze", "/mnt/pruebas-loliveros/bronze/megelon_meetup")
+dbutils.widgets.text("format", "csv")
+
+route_raw = dbutils.widgets.get("route_raw")
+route_bronze = dbutils.widgets.get("route_bronze")
+format = dbutils.widgets.get("format")
+path_bronze = '/dbfs' + route_bronze
+
+#Create folder source if not exist
+if not os.path.exists(path_bronze):
+    print(f"no existe la ruta, por ende se crea {path_bronze}")
+    os.mkdir(path_bronze)
 
 # Use dbutils secrets to get Snowflake credentials.
 user = dbutils.secrets.get("prueba-rappi", "snowflake-user")
@@ -96,6 +106,9 @@ options = {
   "sfSchema": "PUBLIC",
   "sfWarehouse": "COMPUTE_WH"
 }
+
+NOTEBOOKNAME = dbutils.notebook.entry_point.getDbutils().notebook().getContext().notebookPath().get()
+JOB_ID = json.loads(dbutils.notebook.entry_point.getDbutils().notebook().getContext().toJson())['tags']['opId']
 
 # COMMAND ----------
 
@@ -128,10 +141,7 @@ libs_query_for_scala([query_create_schema], options)
 options["sfSchema"] = schema
 
 def migrate_files_raw2bronze(path_raw = None, path_bronze = None, format = 'csv', config_db = None):
-    response = {
-        "status": False
-    }
-
+    response = {"status": False}
     #Get file from path_raw
     list_files = []
     try:
@@ -139,7 +149,6 @@ def migrate_files_raw2bronze(path_raw = None, path_bronze = None, format = 'csv'
             path_file = os.path.join(path_raw, filename)
             #print(path_file)
             df = None
-            
             #Select method
             if format == 'csv':
                 df = spark.read.format('csv').options(header='True', inferSchema='True', delimiter=',').load(path_file)
@@ -151,9 +160,7 @@ def migrate_files_raw2bronze(path_raw = None, path_bronze = None, format = 'csv'
             list_files.append(path_dest)
             df.write.format('delta').mode('overwrite').save(path_dest)
             if config_db != None and type(config_db) is dict: 
-                df.write.format("snowflake").options(**config_db).mode('overwrite').option("dbtable", filename_dest).save()
-            
-
+                df.write.format("snowflake").options(**config_db).mode('overwrite').option("dbtable", filename_dest).save()  
         #Create message successed 
         str_list_files_create = (', \n ').join(list_files)
         msg = f"Se han cargado Sactisfactoria mente los archivos: {str_list_files_create}"
@@ -171,7 +178,10 @@ def migrate_files_raw2bronze(path_raw = None, path_bronze = None, format = 'csv'
 # COMMAND ----------
 
 response = migrate_files_raw2bronze(path_raw = route_raw, path_bronze = route_bronze, config_db = options)
-print(response)
+response["notebook"] = NOTEBOOKNAME
+response["job_id"] = JOB_ID
+#print(response)
+dbutils.notebook.exit(json.dumps(response))
 
 # COMMAND ----------
 
