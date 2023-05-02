@@ -1,0 +1,33 @@
+///gcloug 
+
+##Create environment gcp composer
+gcloud composer environments create pruebas-leoliveros-airflow \
+  --location=us-central1 --machine-type=n1-standard-1 \
+  --cloud-sql-machine-type=db-n1-standard-2 --disk-size=35 \
+  --service-account= <<service_account>> \
+  --zone=us-central1-a
+  --image-version=composer-1.20.2-airflow-2.3.4
+
+##create env variables
+gcloud composer environments update \
+  pruebas-loliveros-airflow \
+  --location us-central1 \
+  --update-env-variables=AIRFLOW_VAR_SNOWFLAKE_HOST= <snowflake_host>
+
+##Delete environment variables
+gcloud composer environments update \
+  pruebas-loliveros-airflow \
+  --location us-central1 \
+  --remove-env-variables=AIRFLOW_VAR_SNOWFLAKE_HOST= <snowflake_host>
+
+## Install libs
+gcloud composer environments update pruebas-loliveros-airflow \
+    --location us-central1 \
+    --update-pypi-packages-from-file Dags\requirements.txt
+
+## Set connections databricks
+gcloud composer environments update \
+  pruebas-loliveros-airflow \
+  --location us-central1 \
+  --update-env-variables=AIRFLOW_CONN_DATABRICKS_DEFAULT='databricks://<<databricks_host>>/?token=<<databricks_token>>'
+
